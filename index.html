@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Simulador de crédito</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Crédito">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap">
+<style>
+:root{--bg:#f3f4f9;--card:#fff;--tx:#161a2b;--mu:#6b7189;--bd:#e6e8f2;--ac:#4f46e5;--on:#fff;--soft:#eceafd;--ok:#0f9f6e;--bad:#e11d48;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1020;--card:#171a30;--tx:#eceefb;--mu:#9aa0bd;--bd:#262a48;--ac:#9b96ff;--on:#12123a;--soft:#23224a;--ok:#34d399;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1020;--card:#171a30;--tx:#eceefb;--mu:#9aa0bd;--bd:#262a48;--ac:#9b96ff;--on:#12123a;--soft:#23224a;--ok:#34d399;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--tx);font:500 15px/1.45 "Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:40px}
+main{max-width:600px;margin:0 auto;padding:16px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+h1{font-size:26px;font-weight:800;margin:6px 0 2px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mu);margin:24px 4px 8px;font-weight:700}
+.sub{color:var(--mu);margin:0 0 14px}
+small,.msg{color:var(--mu);font-size:13px}
+.msg{margin:8px 2px 0}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:6px 16px 16px}
+label{display:block;font-size:13px;font-weight:700;color:var(--mu);margin:14px 0 6px}
+input,select{width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:14px;padding:12px 14px}
+.row{display:flex;gap:8px}
+.row input{flex:1.1}.row select{flex:1.4}
+.hero{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:24px;padding:20px;margin-top:14px;display:flex;flex-direction:column;gap:4px;box-shadow:0 10px 28px rgba(79,70,229,.28)}
+.hero span,.hero small{color:rgba(255,255,255,.85)}
+.hero strong{font-size:38px;font-weight:800;letter-spacing:-.02em}
+.kp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.kp div{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:12px;display:flex;flex-direction:column}
+.kp b{font-size:17px;font-weight:800}
+.btn{background:var(--ac);color:var(--on);border:0;border-radius:14px;padding:13px 16px;font-weight:800;width:100%;margin-top:14px}
+.btn.alt{background:var(--soft);color:var(--ac)}
+.empty{text-align:center;color:var(--mu);padding:34px 10px}
+.ab{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.ab:last-child{border-bottom:0}
+.ab span{flex:1}
+.x{width:36px;height:36px;border-radius:10px;border:1px solid var(--bd);background:var(--card);font-size:16px}
+.cmp{width:100%;border-collapse:collapse;margin-top:6px}
+.cmp th,.cmp td{padding:9px 4px;text-align:right;border-bottom:1px solid var(--bd);font-size:14px}
+.cmp th:first-child,.cmp td:first-child{text-align:left;color:var(--mu);font-weight:700}
+.cmp th{font-size:12px;color:var(--mu);text-transform:uppercase;letter-spacing:.04em}
+.cmp td.n{font-weight:800;color:var(--ac)}
+.win{background:var(--soft);border-radius:16px;padding:14px;margin-top:12px;font-weight:700}
+.win b{color:var(--ok)}
+.tw{overflow-x:auto;margin-top:6px}
+.tw table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:380px}
+.tw th,.tw td{padding:7px 6px;text-align:right;border-bottom:1px solid var(--bd);white-space:nowrap}
+.tw th{color:var(--mu);font-size:11px;text-transform:uppercase}
+.lg{display:flex;gap:14px;font-size:12.5px;color:var(--mu);margin-top:6px;flex-wrap:wrap}
+.lg i{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
+svg{width:100%;height:auto;display:block}
+.svr{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)}
+.svr:last-child{border-bottom:0}
+.sv{display:flex;background:none;border:0;text-align:left;padding:0;flex:1}
+.hid{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>Simulador de crédito</h1>
+<p class="sub">Calcula tu cuota y mira cuánto ahorras si abonas a capital.</p>
+<section class="card">
+<label for="m">Monto a prestar (COP)</label>
+<input id="m" inputmode="numeric" placeholder="Ej. 50.000.000">
+<label for="t">Tasa de interés</label>
+<div class="row"><input id="t" inputmode="decimal" placeholder="Ej. 18,5"><select id="tt" aria-label="Tipo de tasa"><option value="ea">% E.A. (efectiva anual)</option><option value="mv">% mensual</option></select></div>
+<label for="p">Plazo</label>
+<div class="row"><input id="p" inputmode="numeric" placeholder="Ej. 60"><select id="pu" aria-label="Unidad del plazo"><option value="meses">meses</option><option value="años">años</option></select></div>
+<label>Seguros y otros cobros mensuales (opcional)</label>
+<div id="sgl"></div>
+<input id="sgn" maxlength="30" placeholder="Nombre, ej. Seguro de vida" style="margin-top:6px">
+<div class="row" style="margin-top:8px"><select id="sgt" aria-label="Tipo de cobro"><option value="f">Valor fijo ($)</option><option value="s">% mensual del saldo</option></select><input id="sgv" inputmode="decimal" placeholder="Ej. 45.000"></div>
+<button class="btn alt" onclick="addSg()">+ Agregar cobro</button>
+<p class="msg">Suma aquí cada seguro o cobro que va con tu cuota (vida, vehículo, incendio, manejo). Si tu banco lo cobra como porcentaje del saldo, elige la segunda opción.</p>
+</section>
+<div id="res"></div>
+<h2>Abonos a capital</h2>
+<section class="card">
+<label for="at">Tipo de abono</label>
+<select id="at"><option value="u">Abono único (una sola vez)</option><option value="r">Abono extra cada mes</option></select>
+<label for="av">Monto del abono (COP)</label>
+<input id="av" inputmode="numeric" placeholder="Ej. 5.000.000">
+<div class="row" style="margin-top:14px">
+<div style="flex:1"><label for="am" style="margin-top:0" id="aml">En el mes</label><input id="am" inputmode="numeric" placeholder="Ej. 12" style="width:100%"></div>
+<div style="flex:1" id="ahw" class="hid"><label for="ah" style="margin-top:0">Hasta el mes (opcional)</label><input id="ah" inputmode="numeric" placeholder="Hasta el final" style="width:100%"></div>
+</div>
+<button class="btn alt" onclick="addAb()">+ Agregar abono</button>
+<div id="abl"></div>
+<label for="ef">¿Qué quieres que baje con tus abonos?</label>
+<select id="ef"><option value="plazo">El plazo (la cuota sigue igual)</option><option value="cuota">La cuota (el plazo sigue igual)</option></select>
+<p class="msg">Abonar a capital reduce la deuda sobre la que se cobran intereses. Los meses se cuentan desde el primer pago de tu crédito.</p>
+</section>
+<div id="cmp"></div>
+<div id="chart"></div>
+<div id="tb"></div>
+<h2>Mis simulaciones</h2>
+<section class="card">
+<label for="sn">Guardar esta simulación como</label>
+<input id="sn" maxlength="40" placeholder="Ej. Crédito del carro">
+<button class="btn alt" onclick="saveSim()">Guardar simulación</button>
+<div id="svl"></div>
+</section>
+</main>
+<script>
+var $=function(i){return document.getElementById(i)};
+var ST={m:"",t:"",tt:"ea",p:"",pu:"meses",sg:[],ef:"plazo",ab:[],sv:[]},ALL=false;
+try{var raw=localStorage.getItem("credito-v1");if(raw)ST=Object.assign(ST,JSON.parse(raw))}catch(x){}
+function nsg(x){if(Array.isArray(x))return x;var v=Number(digits(x));return v?[{n:"Seguros y otros cobros",t:"f",v:v}]:[]}
+ST.sg=nsg(ST.sg);ST.sv.forEach(function(s){s.sg=nsg(s.sg)});
+function save(){try{localStorage.setItem("credito-v1",JSON.stringify(ST))}catch(x){}}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+var NF=new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0});
+function M$(n){return NF.format(Math.round(n))}
+function digits(v){return String(v||"").replace(/\D/g,"")}
+function dots(v){var d=digits(v);return d?Number(d).toLocaleString("es-CO"):""}
+function pc(x){return (x*100).toLocaleString("es-CO",{maximumFractionDigits:2})+" %"}
+function fmtM(m){var y=Math.floor(m/12),r=m%12,a=[];if(y)a.push(y+(y===1?" año":" años"));if(r||!y)a.push(r+(r===1?" mes":" meses"));return a.join(" y ")}
+function sim(P,i,n,sg,ab,mode){
+var cu=i>0?P*i/(1-Math.pow(1+i,-n)):P/n,cu0=cu,bal=P,rows=[],ti=0,tp=0,te=0,ts=0,m=0;
+while(bal>0.5&&m<n){m++;
+var sx=sg.f+bal*sg.p,it=bal*i,cap=(m>=n)?bal:Math.min(cu-it,bal),pay=it+cap;bal-=cap;
+var ex=0;ab.forEach(function(a){if(a.t==="u"){if(a.m===m)ex+=a.v}else if(m>=a.m&&(!a.h||m<=a.h))ex+=a.v});
+ex=Math.min(ex,Math.max(0,bal));bal-=ex;
+rows.push({m:m,pay:pay+sx,sg:sx,it:it,cap:cap,ex:ex,bal:Math.max(0,bal)});
+ti+=it;tp+=pay+sx;ts+=sx;te+=ex;
+if(mode==="cuota"&&ex>0&&bal>0.5&&n-m>0)cu=i>0?bal*i/(1-Math.pow(1+i,-(n-m))):bal/(n-m)}
+return{rows:rows,ti:ti,tp:tp+te,te:te,ts:ts,cu0:cu0,n:m,cuEnd:cu}}
+function pr(){var P=Number(digits($("m").value)),r=parseFloat(String($("t").value).replace(",",".")),p=parseFloat(String($("p").value).replace(",",".")),n=Math.round($("pu").value==="años"?p*12:p),sf=0,sp=0;
+ST.sg.forEach(function(s){if(s.t==="s")sp+=s.v/100;else sf+=s.v});
+var i=$("tt").value==="ea"?Math.pow(1+r/100,1/12)-1:r/100;
+return{P:P,r:r,n:n,sg:{f:sf,p:sp},hs:ST.sg.length>0,i:i,ok:P>0&&!isNaN(r)&&r>=0&&n>=1&&n<=480}}
+function calc(){
+ST.m=$("m").value;ST.t=$("t").value;ST.tt=$("tt").value;ST.p=$("p").value;ST.pu=$("pu").value;ST.ef=$("ef").value;save();
+var q=pr();
+if(!q.ok){$("res").innerHTML="<div class='empty'>Escribe el monto, la tasa y el plazo para ver tu simulación.</div>";$("cmp").innerHTML="";$("chart").innerHTML="";$("tb").innerHTML="";return}
+var b=sim(q.P,q.i,q.n,q.sg,[],"plazo"),w=ST.ab.length?sim(q.P,q.i,q.n,q.sg,ST.ab,ST.ef):null;
+var ea=Math.pow(1+q.i,12)-1;
+$("res").innerHTML="<section class='hero'><span>Cuota mensual</span><strong>"+M$(b.rows[0].pay)+"</strong><small>"+(q.hs?"Incluye "+M$(b.rows[0].sg)+" de seguros y otros cobros"+(q.sg.p?". Baja un poco cada mes porque ese cobro depende de tu saldo":""):"Cuota fija durante "+fmtM(b.n))+"</small></section>"+
+"<div class='kp'><div><small>Intereses totales</small><b>"+M$(b.ti)+"</b></div><div><small>Total a pagar</small><b>"+M$(b.tp)+"</b></div><div><small>Tasa mensual</small><b>"+pc(q.i)+"</b></div><div><small>Tasa efectiva anual</small><b>"+pc(ea)+"</b></div>"+(q.hs?"<div><small>Cuota sin seguros</small><b>"+M$(b.cu0)+"</b></div><div><small>Total en seguros y cobros</small><b>"+M$(b.ts)+"</b></div>":"")+"</div>"+
+"<p class='msg'>Sistema de cuota fija. El total incluye capital, intereses"+(q.hs?" y seguros":"")+". Tu banco puede cobrar comisiones o calcular distinto.</p>";
+var c="";
+if(w){
+if(!w.te){c="<h2>Efecto de los abonos</h2><div class='card' style='padding-top:16px'>Tus abonos caen fuera del plazo del crédito. Revisa el mes en que los haces.</div>"}
+else{
+var sI=b.ti-w.ti,sM=b.n-w.n,cuN=ST.ef==="cuota"?w.cuEnd:b.cu0;
+c="<h2>Efecto de los abonos</h2><div class='card'><table class='cmp'><tr><th></th><th>Sin abonos</th><th>Con abonos</th></tr>"+
+"<tr><td>Plazo</td><td>"+fmtM(b.n)+"</td><td class='n'>"+fmtM(w.n)+"</td></tr>"+
+"<tr><td>Cuota (sin seguros)</td><td>"+M$(b.cu0)+"</td><td class='n'>"+M$(cuN)+"</td></tr>"+
+"<tr><td>Intereses</td><td>"+M$(b.ti)+"</td><td class='n'>"+M$(w.ti)+"</td></tr>"+(q.hs?"<tr><td>Seguros y cobros</td><td>"+M$(b.ts)+"</td><td class='n'>"+M$(w.ts)+"</td></tr>":"")+
+"<tr><td>Abonos extra</td><td>—</td><td class='n'>"+M$(w.te)+"</td></tr>"+
+"<tr><td>Total pagado</td><td>"+M$(b.tp)+"</td><td class='n'>"+M$(w.tp)+"</td></tr></table>"+
+"<div class='win'>"+(ST.ef==="plazo"?"Terminas de pagar <b>"+fmtM(sM)+" antes</b> y":"Tu cuota sin seguros baja a <b>"+M$(cuN)+"</b> y")+" te ahorras <b>"+M$(sI)+"</b> en intereses ("+Math.round(sI*100/b.ti)+" % menos).</div></div>"}}
+$("cmp").innerHTML=c;
+$("chart").innerHTML=chart(q,b,w);
+var s=w&&w.te?w:b;
+$("tb").innerHTML="<h2>Tabla de amortización"+(w&&w.te?" (con abonos)":"")+"</h2><div class='card' style='padding:8px 8px 12px'><div class='tw'><table><tr><th>Mes</th><th>Cuota</th><th>Interés</th><th>Capital</th>"+(w&&w.te?"<th>Abono</th>":"")+"<th>Saldo</th></tr>"+
+s.rows.slice(0,ALL?9999:12).map(function(r){return"<tr><td>"+r.m+"</td><td>"+M$(r.pay)+"</td><td>"+M$(r.it)+"</td><td>"+M$(r.cap)+"</td>"+(w&&w.te?"<td>"+(r.ex?M$(r.ex):"—")+"</td>":"")+"<td>"+M$(r.bal)+"</td></tr>"}).join("")+"</table></div>"+(s.rows.length>12?"<button class='btn alt' style='margin:10px 8px 0;width:calc(100% - 16px)' onclick='ALL=!ALL;calc()'>"+(ALL?"Ver menos":"Ver las "+s.rows.length+" cuotas")+"</button>":"")+"</div>"}
+function chart(q,b,w){var W=320,H=170,L=6,R=6,T=10,B=22,N=b.n,iw=W-L-R,ih=H-T-B;
+var X=function(m){return L+iw*m/N},Y=function(v){return T+ih*(1-v/q.P)};
+var pth=function(s){var d="M"+X(0)+" "+Y(q.P);s.rows.forEach(function(r){d+=" L"+X(r.m).toFixed(1)+" "+Y(r.bal).toFixed(1)});return d};
+var o="<h2>Cómo baja tu deuda</h2><div class='card' style='padding:12px'><svg viewBox='0 0 "+W+" "+H+"' role='img' aria-label='Gráfica del saldo de la deuda'><line x1='"+L+"' y1='"+(T+ih)+"' x2='"+(W-R)+"' y2='"+(T+ih)+"' stroke='var(--bd)'/>";
+o+="<path d='"+pth(b)+"' fill='none' stroke='var(--mu)' stroke-width='2.5' stroke-dasharray='5 4'/>";
+if(w&&w.te)o+="<path d='"+pth(w)+"' fill='none' stroke='var(--ac)' stroke-width='3.5' stroke-linecap='round'/>";
+o+="<text x='"+L+"' y='"+(H-5)+"' fill='var(--mu)' font-size='10'>mes 0</text><text x='"+(W-R)+"' y='"+(H-5)+"' fill='var(--mu)' font-size='10' text-anchor='end'>mes "+N+"</text></svg>";
+return o+"<div class='lg'><span><i style='background:var(--mu)'></i>Sin abonos</span>"+(w&&w.te?"<span><i style='background:var(--ac)'></i>Con abonos</span>":"")+"</div></div>"}
+function rsg(){$("sgl").innerHTML=ST.sg.map(function(s,i){return"<div class='ab'><span><b>"+esc(s.n)+"</b> · "+(s.t==="s"?s.v.toLocaleString("es-CO",{maximumFractionDigits:4})+" % del saldo cada mes":M$(s.v)+" al mes")+"</span><button class='x' aria-label='Quitar cobro' onclick='rmSg("+i+")'>✕</button></div>"}).join("")}
+function addSg(){var t=$("sgt").value,raw=$("sgv").value,v=t==="s"?parseFloat(String(raw).replace(",",".")):Number(digits(raw));if(!(v>0)){$("sgv").focus();return}ST.sg.push({n:$("sgn").value.trim()||"Seguro",t:t,v:v});$("sgn").value="";$("sgv").value="";rsg();calc()}
+function rmSg(i){ST.sg.splice(i,1);rsg();calc()}
+function rab(){$("abl").innerHTML=ST.ab.length?ST.ab.map(function(a,i){return"<div class='ab'><span>"+(a.t==="u"?"Abono de <b>"+M$(a.v)+"</b> en el mes "+a.m:"<b>"+M$(a.v)+"</b> cada mes desde el mes "+a.m+(a.h?" hasta el "+a.h:""))+"</span><button class='x' aria-label='Quitar abono' onclick='rmAb("+i+")'>✕</button></div>"}).join(""):""}
+function tAb(){var r=$("at").value==="r";$("aml").textContent=r?"Desde el mes":"En el mes";$("ahw").className=r?"":"hid"}
+function addAb(){var t=$("at").value,v=Number(digits($("av").value)),m=parseInt($("am").value,10),h=parseInt($("ah").value,10);if(!v){$("av").focus();return}if(!(m>=1)){$("am").focus();return}
+ST.ab.push({t:t,v:v,m:m,h:t==="r"&&h>=m?h:0});ST.ab.sort(function(a,b){return a.m-b.m});$("av").value="";$("am").value="";$("ah").value="";rab();calc()}
+function rmAb(i){ST.ab.splice(i,1);rab();calc()}
+function rsv(){$("svl").innerHTML=ST.sv.length?ST.sv.map(function(s,i){return"<div class='svr'><button class='sv' onclick='ldSim("+i+")'><span style='flex:1'><b>"+esc(s.name)+"</b><br><small>"+M$(Number(digits(s.m)))+" · "+esc(s.t)+(s.tt==="ea"?" % E.A.":" % mensual")+" · "+esc(s.p)+" "+s.pu+(s.ab.length?" · "+s.ab.length+" abono(s)":"")+"</small></span></button><button class='x' aria-label='Eliminar' onclick='dlSim("+i+")'>✕</button></div>"}).join(""):"<p class='msg'>Aún no has guardado simulaciones.</p>"}
+function saveSim(){calc();var n=$("sn").value.trim();if(!n){$("sn").focus();return}ST.sv.unshift({name:n,m:ST.m,t:ST.t,tt:ST.tt,p:ST.p,pu:ST.pu,sg:JSON.parse(JSON.stringify(ST.sg)),ef:ST.ef,ab:JSON.parse(JSON.stringify(ST.ab))});$("sn").value="";save();rsv()}
+function ldSim(i){var s=ST.sv[i];["m","t","tt","p","pu","ef"].forEach(function(k){ST[k]=s[k]});ST.sg=JSON.parse(JSON.stringify(nsg(s.sg)));ST.ab=JSON.parse(JSON.stringify(s.ab));fill();window.scrollTo(0,0)}
+function dlSim(i){ST.sv.splice(i,1);save();rsv()}
+function fill(){["m","t","tt","p","pu","ef"].forEach(function(k){$(k).value=ST[k]});rsg();rab();rsv();calc()}
+["m","av"].forEach(function(i){$(i).addEventListener("input",function(){this.value=dots(this.value)})});
+["m","t","tt","p","pu","ef"].forEach(function(i){$(i).addEventListener("input",calc);$(i).addEventListener("change",calc)});
+$("at").addEventListener("change",tAb);
+$("sgt").addEventListener("change",function(){$("sgv").placeholder=this.value==="s"?"Ej. 0,05":"Ej. 45.000"});
+fill();
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("service-worker.js").catch(function(){})})}
+</script>
+</body>
+</html>
