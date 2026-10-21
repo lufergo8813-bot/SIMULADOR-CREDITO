@@ -64,12 +64,21 @@ svg{width:100%;height:auto;display:block}
 .svr:last-child{border-bottom:0}
 .sv{display:flex;background:none;border:0;text-align:left;padding:0;flex:1}
 .hid{display:none}
+.tabs{display:flex;background:var(--soft);border-radius:14px;padding:4px;gap:4px;margin:4px 0 4px}
+.tabs button{flex:1;border:0;background:none;padding:10px;border-radius:11px;font-weight:800;color:var(--mu)}
+.tabs button.on{background:var(--card);color:var(--ac);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.bar{height:10px;background:var(--soft);border-radius:8px;overflow:hidden;margin:4px 0 8px}
+.bar i{display:block;height:100%;background:var(--c);border-radius:8px}
+.vd{border-radius:18px;padding:16px;margin-top:12px;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 12%,transparent)}
+.vd b.t{display:block;font-size:18px;margin-bottom:4px}
 </style>
 </head>
 <body>
 <main>
 <h1>Simulador de crédito</h1>
-<p class="sub">Calcula tu cuota y mira cuánto ahorras si abonas a capital.</p>
+<p class="sub">Calcula tu cuota, compara abonos a capital y mira si te conviene refinanciar.</p>
+<div class="tabs"><button id="tb1" class="on" onclick="tabS('s')">Simulador</button><button id="tb2" onclick="tabS('r')">Refinanciar</button></div>
+<div id="v1">
 <section class="card">
 <label for="m">Monto a prestar (COP)</label>
 <input id="m" inputmode="numeric" placeholder="Ej. 50.000.000">
@@ -111,10 +120,43 @@ svg{width:100%;height:auto;display:block}
 <button class="btn alt" onclick="saveSim()">Guardar simulación</button>
 <div id="svl"></div>
 </section>
+</div>
+<div id="v2" class="hid">
+<h2>Tu crédito actual</h2>
+<section class="card">
+<label for="rm">Monto original del crédito (COP)</label>
+<input id="rm" inputmode="numeric" placeholder="Ej. 100.000.000">
+<label for="rt">Tasa de interés actual</label>
+<div class="row"><input id="rt" inputmode="decimal" placeholder="Ej. 22"><select id="rtt" aria-label="Tipo de tasa actual"><option value="ea">% E.A. (efectiva anual)</option><option value="mv">% mensual</option></select></div>
+<label for="rp">Plazo original</label>
+<div class="row"><input id="rp" inputmode="numeric" placeholder="Ej. 120"><select id="rpu" aria-label="Unidad del plazo"><option value="meses">meses</option><option value="años">años</option></select></div>
+<label for="rk">¿En qué cuota vas? (cuotas que ya pagaste)</label>
+<input id="rk" inputmode="numeric" placeholder="Ej. 24">
+<label for="rs">Seguros y otros cobros mensuales actuales (opcional)</label>
+<input id="rs" inputmode="numeric" placeholder="Ej. 45.000">
+<label for="rb">Saldo que te dice el banco (opcional)</label>
+<input id="rb" inputmode="numeric" placeholder="Si lo dejas vacío, lo calculamos">
+</section>
+<h2>Crédito nuevo para refinanciar</h2>
+<section class="card">
+<label for="nt">Tasa de interés del nuevo crédito</label>
+<div class="row"><input id="nt" inputmode="decimal" placeholder="Ej. 16"><select id="ntt" aria-label="Tipo de tasa nueva"><option value="ea">% E.A. (efectiva anual)</option><option value="mv">% mensual</option></select></div>
+<label for="np">Plazo del nuevo crédito</label>
+<div class="row"><input id="np" inputmode="numeric" placeholder="Ej. 96"><select id="npu" aria-label="Unidad del plazo nuevo"><option value="meses">meses</option><option value="años">años</option></select></div>
+<label for="ns">Seguros y otros cobros mensuales del nuevo (opcional)</label>
+<input id="ns" inputmode="numeric" placeholder="Ej. 45.000">
+<label for="nc">Costos de cambiarte: estudio, comisión, notaría, avalúo (COP)</label>
+<input id="nc" inputmode="numeric" placeholder="Ej. 1.500.000">
+<label for="npn">Penalización por pagar el crédito actual antes (% del saldo)</label>
+<input id="npn" inputmode="decimal" placeholder="Ej. 1,5 (déjalo vacío si no cobran)">
+<p class="msg">El nuevo crédito se calcula sobre tu saldo actual. Pregunta a tu banco si cobra penalización por prepago y cuáles son los costos reales.</p>
+</section>
+<div id="rr"></div>
+</div>
 </main>
 <script>
 var $=function(i){return document.getElementById(i)};
-var ST={m:"",t:"",tt:"ea",p:"",pu:"meses",sg:[],ef:"plazo",ab:[],sv:[]},ALL=false;
+var ST={m:"",t:"",tt:"ea",p:"",pu:"meses",sg:[],ef:"plazo",ab:[],sv:[],r:{},tab:"s"},ALL=false;
 try{var raw=localStorage.getItem("credito-v1");if(raw)ST=Object.assign(ST,JSON.parse(raw))}catch(x){}
 function nsg(x){if(Array.isArray(x))return x;var v=Number(digits(x));return v?[{n:"Seguros y otros cobros",t:"f",v:v}]:[]}
 ST.sg=nsg(ST.sg);ST.sv.forEach(function(s){s.sg=nsg(s.sg)});
@@ -160,8 +202,8 @@ c="<h2>Efecto de los abonos</h2><div class='card'><table class='cmp'><tr><th></t
 "<tr><td>Intereses</td><td>"+M$(b.ti)+"</td><td class='n'>"+M$(w.ti)+"</td></tr>"+(q.hs?"<tr><td>Seguros y cobros</td><td>"+M$(b.ts)+"</td><td class='n'>"+M$(w.ts)+"</td></tr>":"")+
 "<tr><td>Abonos extra</td><td>—</td><td class='n'>"+M$(w.te)+"</td></tr>"+
 "<tr><td>Total pagado</td><td>"+M$(b.tp)+"</td><td class='n'>"+M$(w.tp)+"</td></tr></table>"+
-"<div class='win'>"+(ST.ef==="plazo"?"Terminas de pagar <b>"+fmtM(sM)+" antes</b> y":"Tu cuota sin seguros baja a <b>"+M$(cuN)+"</b> y")+" te ahorras <b>"+M$(sI)+"</b> en intereses ("+Math.round(sI*100/b.ti)+" % menos).</div></div>"}}
-$("cmp").innerHTML=c;
+bars(b,w)+"<div class='win'>"+(ST.ef==="plazo"?"Terminas de pagar <b>"+fmtM(sM)+" antes</b> y":"Tu cuota sin seguros baja a <b>"+M$(cuN)+"</b> y")+" te ahorras <b>"+M$(sI)+"</b> en intereses ("+Math.round(sI*100/b.ti)+" % menos).</div></div>"}}
+if(!w)c="<h2>Efecto de los abonos</h2><div class='card' style='padding-top:16px'><span class='msg'>Agrega un abono arriba y aquí verás cuánto te ahorras comparado con no abonar.</span></div>";$("cmp").innerHTML=c;
 $("chart").innerHTML=chart(q,b,w);
 var s=w&&w.te?w:b;
 $("tb").innerHTML="<h2>Tabla de amortización"+(w&&w.te?" (con abonos)":"")+"</h2><div class='card' style='padding:8px 8px 12px'><div class='tw'><table><tr><th>Mes</th><th>Cuota</th><th>Interés</th><th>Capital</th>"+(w&&w.te?"<th>Abono</th>":"")+"<th>Saldo</th></tr>"+
@@ -187,11 +229,52 @@ function saveSim(){calc();var n=$("sn").value.trim();if(!n){$("sn").focus();retu
 function ldSim(i){var s=ST.sv[i];["m","t","tt","p","pu","ef"].forEach(function(k){ST[k]=s[k]});ST.sg=JSON.parse(JSON.stringify(nsg(s.sg)));ST.ab=JSON.parse(JSON.stringify(s.ab));fill();window.scrollTo(0,0)}
 function dlSim(i){ST.sv.splice(i,1);save();rsv()}
 function fill(){["m","t","tt","p","pu","ef"].forEach(function(k){$(k).value=ST[k]});rsg();rab();rsv();calc()}
+
+function bars(b,w){var r=function(l,x,y,f){return"<small>"+l+"</small><div class='bar' style='--c:var(--mu)'><i style='width:100%'></i></div><small>Sin abonos: <b>"+f(x)+"</b></small><div class='bar' style='--c:var(--ac)'><i style='width:"+(x>0?Math.max(2,y*100/x):100)+"%'></i></div><small>Con abonos: <b>"+f(y)+"</b></small>"};
+return"<div style='margin-top:14px'>"+r("Intereses a pagar",b.ti,w.ti,M$)+"<div style='height:8px'></div>"+r("Tiempo para terminar",b.n,w.n,fmtM)+(w.te?"<p class='msg'>Por cada $1.000.000 que abonas, te ahorras ≈ <b>"+M$((b.ti-w.ti)/w.te*1e6)+"</b> en intereses.</p>":"")+"</div>"}
+var RIDS=["rm","rt","rtt","rp","rpu","rk","rs","rb","nt","ntt","np","npu","ns","nc","npn"];
+function rest(S,i,cu,seg){var bal=S,m=0,ti=0,ts=0,tp=0,rows=[];while(bal>0.5&&m<600){m++;var it=bal*i,cap=Math.min(Math.max(cu-it,0.01),bal);bal-=cap;rows.push({m:m,bal:Math.max(0,bal)});ti+=it;ts+=seg;tp+=it+cap+seg}return{n:m,ti:ti,ts:ts,tp:tp,rows:rows,cu:cu+seg}}
+function tabS(t){ST.tab=t;save();$("v1").className=t==="s"?"":"hid";$("v2").className=t==="r"?"":"hid";$("tb1").className=t==="s"?"on":"";$("tb2").className=t==="r"?"on":"";window.scrollTo(0,0)}
+function rinit(){RIDS.forEach(function(k){if(ST.r[k]!=null)$(k).value=ST.r[k]});["rm","rs","rb","ns","nc"].forEach(function(k){$(k).addEventListener("input",function(){this.value=dots(this.value)})});RIDS.forEach(function(k){$(k).addEventListener("input",rcalc);$(k).addEventListener("change",rcalc)});tabS(ST.tab||"s");rcalc()}
+function mo(p,u){var x=parseFloat(String($(p).value).replace(",","."));return Math.round($(u).value==="años"?x*12:x)}
+function chart2(S,a,b,N){var W=320,H=170,L=6,R=6,T=10,B=22,iw=W-L-R,ih=H-T-B,X=function(m){return L+iw*m/N},Y=function(v){return T+ih*(1-v/S)};
+var pth=function(s){var d="M"+X(0)+" "+Y(S);s.rows.forEach(function(r){d+=" L"+X(r.m).toFixed(1)+" "+Y(r.bal).toFixed(1)});return d};
+return"<h2>Cómo baja tu deuda</h2><div class='card' style='padding:12px'><svg viewBox='0 0 "+W+" "+H+"' role='img' aria-label='Gráfica del saldo: crédito actual contra refinanciado'><line x1='"+L+"' y1='"+(T+ih)+"' x2='"+(W-R)+"' y2='"+(T+ih)+"' stroke='var(--bd)'/><path d='"+pth(a)+"' fill='none' stroke='var(--mu)' stroke-width='2.5' stroke-dasharray='5 4'/><path d='"+pth(b)+"' fill='none' stroke='var(--ac)' stroke-width='3.5' stroke-linecap='round'/><text x='"+L+"' y='"+(H-5)+"' fill='var(--mu)' font-size='10'>hoy</text><text x='"+(W-R)+"' y='"+(H-5)+"' fill='var(--mu)' font-size='10' text-anchor='end'>mes "+N+"</text></svg><div class='lg'><span><i style='background:var(--mu)'></i>Seguir con el actual</span><span><i style='background:var(--ac)'></i>Refinanciar</span></div></div>"}
+function rcalc(){RIDS.forEach(function(k){ST.r[k]=$(k).value});save();
+var D=function(k){return Number(digits($(k).value))||0},F=function(k){return parseFloat(String($(k).value).replace(",","."))},out=$("rr");
+var P=D("rm"),r=F("rt"),n=mo("rp","rpu"),k=parseInt($("rk").value,10)||0,sA=D("rs"),rn=F("nt"),nn=mo("np","npu"),sN=D("ns");
+if(!(P>0&&!isNaN(r)&&r>=0&&n>=1&&n<=480)||!(rn>=0)||!(nn>=1&&nn<=480)){out.innerHTML="<div class='empty'>Completa los datos de tu crédito actual (monto, tasa, plazo y en qué cuota vas) y los del crédito nuevo para compararlos.</div>";return}
+if(k<0||k>=n){out.innerHTML="<div class='empty'>Las cuotas que ya pagaste deben ser menos que el plazo total ("+n+").</div>";return}
+var iA=$("rtt").value==="ea"?Math.pow(1+r/100,1/12)-1:r/100,iB=$("ntt").value==="ea"?Math.pow(1+rn/100,1/12)-1:rn/100;
+var o=sim(P,iA,n,{f:sA,p:0},[],"plazo"),S=D("rb")||(k>0?o.rows[k-1].bal:P),a=rest(S,iA,o.cu0,sA);
+var C=D("nc")+(F("npn")||0)/100*S,b=sim(S,iB,nn,{f:sN,p:0},[],"plazo"),b2=sim(S,iB,a.n,{f:sN,p:0},[],"plazo");
+var eaA=Math.pow(1+iA,12)-1,eaB=Math.pow(1+iB,12)-1,cA=a.cu,cB=b.rows[0].pay,cB2=b2.rows[0].pay;
+var costA=a.ti+a.ts,costB=b.ti+b.ts+C,ah=costA-costB,ah2=costA-(b2.ti+b2.ts+C),dq=cA-cB,dq2=cA-cB2,vd;
+if(ah>0&&nn<=a.n)vd=["var(--ok)","✅ Sí vale la pena","En total pagas "+M$(ah)+" menos y no alargas el plazo."];
+else if(ah>0)vd=["var(--ok)","✅ Te ahorras dinero, pero alargas el plazo","Pagas "+M$(ah)+" menos en total, aunque terminas "+(nn-a.n)+" meses después. Con un plazo igual al que te falta ("+a.n+" meses) el ahorro puede ser mayor."];
+else if(dq>0)vd=["#f59e0b","⚠️ Solo te alivia la cuota","Tu cuota baja "+M$(dq)+" al mes, pero en total pagarías "+M$(-ah)+" más. Sirve si necesitas liberar flujo de caja, no si buscas ahorrar."];
+else vd=["var(--bad)","❌ No vale la pena","Con estos datos pagarías "+M$(-ah)+" más y tu cuota no baja."];
+var be=dq2>0?(C>0?Math.ceil(C/dq2):0):null;
+var h="<h2>Dónde estás hoy</h2><div class='kp'><div><small>Cuota en la que vas</small><b>"+k+" de "+n+"</b></div><div><small>Cuotas que te faltan</small><b>"+a.n+"</b></div><div><small>Saldo "+(D("rb")?"(el del banco)":"estimado")+"</small><b>"+M$(S)+"</b></div><div><small>Cuota actual</small><b>"+M$(cA)+"</b></div></div>";
+h+="<h2>Veredicto</h2><div class='vd' style='--c:"+vd[0]+"'><b class='t'>"+vd[1]+"</b>"+vd[2]+"</div>";
+h+="<div class='card' style='margin-top:12px;padding-top:12px'><table class='cmp'><tr><th></th><th>Seguir con el actual</th><th>Refinanciar</th></tr>"+
+"<tr><td>Tasa E.A.</td><td>"+pc(eaA)+"</td><td class='n'>"+pc(eaB)+"</td></tr>"+
+"<tr><td>Cuota mensual</td><td>"+M$(cA)+"</td><td class='n'>"+M$(cB)+"</td></tr>"+
+"<tr><td>Tiempo que falta</td><td>"+fmtM(a.n)+"</td><td class='n'>"+fmtM(nn)+"</td></tr>"+
+"<tr><td>Intereses por pagar</td><td>"+M$(a.ti)+"</td><td class='n'>"+M$(b.ti)+"</td></tr>"+
+((sA||sN)?"<tr><td>Seguros por pagar</td><td>"+M$(a.ts)+"</td><td class='n'>"+M$(b.ts)+"</td></tr>":"")+
+"<tr><td>Costos de cambiarte</td><td>—</td><td class='n'>"+M$(C)+"</td></tr>"+
+"<tr><td>Total de aquí en adelante</td><td>"+M$(a.tp)+"</td><td class='n'>"+M$(b.tp+C)+"</td></tr></table></div>";
+h+="<h2>Qué cambiaría</h2><div class='kp'><div><small>Tasa E.A.</small><b>"+(eaA>=eaB?"Baja ":"Sube ")+(Math.abs(eaA-eaB)*100).toLocaleString("es-CO",{maximumFractionDigits:2})+" puntos</b></div><div><small>Cuota mensual</small><b>"+(dq>=0?"Baja ":"Sube ")+M$(Math.abs(dq))+"</b></div></div>";
+if(nn!==a.n)h+="<p class='msg'>Si el nuevo crédito tuviera el mismo tiempo que te falta ("+fmtM(a.n)+"), la cuota sería <b>"+M$(cB2)+"</b> y el ahorro total <b>"+M$(ah2)+"</b>.</p>";
+h+="<p class='msg'>"+(be===null?"Con el mismo plazo, la cuota nueva no baja, así que los costos de cambiarte no se recuperan.":be===0?"No tienes costos de cambio, así que el beneficio empieza desde la primera cuota.":"Recuperas los costos de cambiarte (<b>"+M$(C)+"</b>) en unos <b>"+be+" meses</b>"+(be>a.n?", más de lo que te falta, así que no los recuperarías.":"."))+"</p>";
+h+=chart2(Math.max(S,1),a,b,Math.max(a.n,nn));
+out.innerHTML=h+"<p class='msg'>Estimación con cuota fija. Confirma con el banco las condiciones, los costos y si cobra penalización por prepago antes de decidir.</p>"}
 ["m","av"].forEach(function(i){$(i).addEventListener("input",function(){this.value=dots(this.value)})});
 ["m","t","tt","p","pu","ef"].forEach(function(i){$(i).addEventListener("input",calc);$(i).addEventListener("change",calc)});
 $("at").addEventListener("change",tAb);
 $("sgt").addEventListener("change",function(){$("sgv").placeholder=this.value==="s"?"Ej. 0,05":"Ej. 45.000"});
-fill();
+fill();rinit();
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("service-worker.js").catch(function(){})})}
 </script>
 </body>
