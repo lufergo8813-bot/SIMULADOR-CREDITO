@@ -111,6 +111,7 @@ svg{width:100%;height:auto;display:block}
 <p class="msg">Abonar a capital reduce la deuda sobre la que se cobran intereses. Los meses se cuentan desde el primer pago de tu crédito.</p>
 </section>
 <div id="cmp"></div>
+<button id="copyAbCmp" class="btn alt hid" onclick="copyComparison('cmp','Comparación de abonos')">Copiar comparación de abonos para hoja de cálculo</button>
 <div id="chart"></div>
 <div id="tb"></div>
 <h2>Mis simulaciones</h2>
@@ -119,6 +120,11 @@ svg{width:100%;height:auto;display:block}
 <input id="sn" maxlength="40" placeholder="Ej. Crédito del carro">
 <button class="btn alt" onclick="saveSim()">Guardar simulación</button>
 <div id="svl"></div>
+<button class="btn alt" onclick="copyBackup()">Copiar respaldo completo</button>
+<label for="restoreText">Restaurar respaldo pegando el texto</label>
+<textarea id="restoreText" rows="5" style="width:100%;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:14px;padding:12px 14px" placeholder="Pega aquí el texto del respaldo copiado"></textarea>
+<button class="btn alt" onclick="restoreBackup()">Restaurar datos</button>
+<p id="backupMsg" class="msg" aria-live="polite"></p>
 </section>
 </div>
 <div id="v2" class="hid">
@@ -152,6 +158,7 @@ svg{width:100%;height:auto;display:block}
 <p class="msg">El nuevo crédito se calcula sobre tu saldo actual. Pregunta a tu banco si cobra penalización por prepago y cuáles son los costos reales.</p>
 </section>
 <div id="rr"></div>
+<button id="copyRefCmp" class="btn alt" onclick="copyComparison('rr','Comparación de refinanciación')">Copiar comparación de refinanciación para hoja de cálculo</button>
 </div>
 </main>
 <script>
@@ -166,6 +173,13 @@ var NF=new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFra
 function M$(n){return NF.format(Math.round(n))}
 function digits(v){return String(v||"").replace(/\D/g,"")}
 function dots(v){var d=digits(v);return d?Number(d).toLocaleString("es-CO"):""}
+function tsvTable(table){return Array.from(table.rows).map(function(row){return Array.from(row.cells).map(function(cell){return cell.innerText.trim().replace(/\s+/g," ").replace(/\t/g," ")}).join("\t")}).join("\n")}
+function copyText(text,msg){var done=function(){var el=$("backupMsg");if(el)el.textContent=msg||"Copiado al portapapeles."};if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(done).catch(function(){fallbackCopy(text,done)});else fallbackCopy(text,done)}
+function fallbackCopy(text,done){var a=document.createElement("textarea");a.value=text;a.style.position="fixed";a.style.opacity="0";document.body.appendChild(a);a.select();try{document.execCommand("copy");done()}catch(e){alert("No se pudo copiar automáticamente. Selecciona y copia el texto manualmente.")}a.remove()}
+function copyBackup(){ST.m=$("m").value;ST.t=$("t").value;ST.tt=$("tt").value;ST.p=$("p").value;ST.pu=$("pu").value;ST.ef=$("ef").value;RIDS.forEach(function(k){if($(k))ST.r[k]=$(k).value});save();copyText(JSON.stringify({app:"simulador-credito",version:1,data:ST},null,2),"Respaldo completo copiado. Guárdalo para poder restaurarlo.")}
+function restoreBackup(){try{var obj=JSON.parse($("restoreText").value),data=obj&&obj.data?obj.data:obj;if(!data||typeof data!=="object")throw Error("Formato no válido");var base={m:"",t:"",tt:"ea",p:"",pu:"meses",sg:[],ef:"plazo",ab:[],sv:[],r:{},tab:"s"};ST=Object.assign(base,data);ST.sg=nsg(ST.sg);ST.ab=Array.isArray(ST.ab)?ST.ab:[];ST.sv=Array.isArray(ST.sv)?ST.sv:[];ST.sv.forEach(function(x){x.sg=nsg(x.sg);x.ab=Array.isArray(x.ab)?x.ab:[]});ST.r=ST.r&&typeof ST.r==="object"?ST.r:{};save();fill();RIDS.forEach(function(k){$(k).value=ST.r[k]||""});tabS(ST.tab||"s");rcalc();$("backupMsg").textContent="Respaldo restaurado correctamente."}catch(e){$("backupMsg").textContent="No se pudo restaurar: pega un respaldo JSON válido generado por esta aplicación."}}
+function copyComparison(id,label){var t=$(id).querySelector("table.cmp");if(!t){alert("Aún no hay una comparación disponible. Completa los datos primero.");return}copyText(tsvTable(t),label+" copiada en formato TSV, lista para pegar en Excel o Google Sheets.")}
+function copyAmortization(){var q=pr();if(!q.ok){alert("Completa primero monto, tasa y plazo.");return}var base=sim(q.P,q.i,q.n,q.sg,[],"plazo"),w=ST.ab.length?sim(q.P,q.i,q.n,q.sg,ST.ab,ST.ef):null,s=w&&w.te?w:base,hasExtra=!!(w&&w.te);var lines=[["Mes","Cuota total (COP)","Seguros y cobros (COP)","Interés (COP)","Capital de cuota (COP)"].concat(hasExtra?["Abono extra (COP)"]:[]).concat(["Saldo (COP)"])];s.rows.forEach(function(r){var row=[r.m,Math.round(r.pay),Math.round(r.sg),Math.round(r.it),Math.round(r.cap)];if(hasExtra)row.push(Math.round(r.ex));row.push(Math.round(r.bal));lines.push(row)});copyText(lines.map(function(r){return r.join("\t")}).join("\n"),"Tabla de amortización completa copiada (incluye seguros y abonos), lista para pegar en Excel o Google Sheets.")}
 function pc(x){return (x*100).toLocaleString("es-CO",{maximumFractionDigits:2})+" %"}
 function fmtM(m){var y=Math.floor(m/12),r=m%12,a=[];if(y)a.push(y+(y===1?" año":" años"));if(r||!y)a.push(r+(r===1?" mes":" meses"));return a.join(" y ")}
 function sim(P,i,n,sg,ab,mode){
@@ -203,11 +217,11 @@ c="<h2>Efecto de los abonos</h2><div class='card'><table class='cmp'><tr><th></t
 "<tr><td>Abonos extra</td><td>—</td><td class='n'>"+M$(w.te)+"</td></tr>"+
 "<tr><td>Total pagado</td><td>"+M$(b.tp)+"</td><td class='n'>"+M$(w.tp)+"</td></tr></table>"+
 bars(b,w)+"<div class='win'>"+(ST.ef==="plazo"?"Terminas de pagar <b>"+fmtM(sM)+" antes</b> y":"Tu cuota sin seguros baja a <b>"+M$(cuN)+"</b> y")+" te ahorras <b>"+M$(sI)+"</b> en intereses ("+Math.round(sI*100/b.ti)+" % menos).</div></div>"}}
-if(!w)c="<h2>Efecto de los abonos</h2><div class='card' style='padding-top:16px'><span class='msg'>Agrega un abono arriba y aquí verás cuánto te ahorras comparado con no abonar.</span></div>";$("cmp").innerHTML=c;
+if(!w)c="<h2>Efecto de los abonos</h2><div class='card' style='padding-top:16px'><span class='msg'>Agrega un abono arriba y aquí verás cuánto te ahorras comparado con no abonar.</span></div>";$("cmp").innerHTML=c;$("copyAbCmp").className=w&&w.te?"btn alt":"btn alt hid";
 $("chart").innerHTML=chart(q,b,w);
 var s=w&&w.te?w:b;
-$("tb").innerHTML="<h2>Tabla de amortización"+(w&&w.te?" (con abonos)":"")+"</h2><div class='card' style='padding:8px 8px 12px'><div class='tw'><table><tr><th>Mes</th><th>Cuota</th><th>Interés</th><th>Capital</th>"+(w&&w.te?"<th>Abono</th>":"")+"<th>Saldo</th></tr>"+
-s.rows.slice(0,ALL?9999:12).map(function(r){return"<tr><td>"+r.m+"</td><td>"+M$(r.pay)+"</td><td>"+M$(r.it)+"</td><td>"+M$(r.cap)+"</td>"+(w&&w.te?"<td>"+(r.ex?M$(r.ex):"—")+"</td>":"")+"<td>"+M$(r.bal)+"</td></tr>"}).join("")+"</table></div>"+(s.rows.length>12?"<button class='btn alt' style='margin:10px 8px 0;width:calc(100% - 16px)' onclick='ALL=!ALL;calc()'>"+(ALL?"Ver menos":"Ver las "+s.rows.length+" cuotas")+"</button>":"")+"</div>"}
+$("tb").innerHTML="<h2>Tabla de amortización"+(w&&w.te?" (con abonos)":"")+"</h2><button class='btn alt' onclick='copyAmortization()'>Copiar tabla completa para Excel o Google Sheets</button><div class='card' style='padding:8px 8px 12px'><div class='tw'><table><tr><th>Mes</th><th>Cuota</th><th>Seguro/cobros</th><th>Interés</th><th>Capital</th>"+(w&&w.te?"<th>Abono</th>":"")+"<th>Saldo</th></tr>"+
+s.rows.slice(0,ALL?9999:12).map(function(r){return"<tr><td>"+r.m+"</td><td>"+M$(r.pay)+"</td><td>"+M$(r.sg)+"</td><td>"+M$(r.it)+"</td><td>"+M$(r.cap)+"</td>"+(w&&w.te?"<td>"+(r.ex?M$(r.ex):"—")+"</td>":"")+"<td>"+M$(r.bal)+"</td></tr>"}).join("")+"</table></div>"+(s.rows.length>12?"<button class='btn alt' style='margin:10px 8px 0;width:calc(100% - 16px)' onclick='ALL=!ALL;calc()'>"+(ALL?"Ver menos":"Ver las "+s.rows.length+" cuotas")+"</button>":"")+"</div>"}
 function chart(q,b,w){var W=320,H=170,L=6,R=6,T=10,B=22,N=b.n,iw=W-L-R,ih=H-T-B;
 var X=function(m){return L+iw*m/N},Y=function(v){return T+ih*(1-v/q.P)};
 var pth=function(s){var d="M"+X(0)+" "+Y(q.P);s.rows.forEach(function(r){d+=" L"+X(r.m).toFixed(1)+" "+Y(r.bal).toFixed(1)});return d};
