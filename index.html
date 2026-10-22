@@ -111,24 +111,13 @@ svg{width:100%;height:auto;display:block}
 <p class="msg">Abonar a capital reduce la deuda sobre la que se cobran intereses. Los meses se cuentan desde el primer pago de tu crédito.</p>
 </section>
 <div id="cmp"></div>
-
-<button class="btn alt" style="margin-top:10px;" onclick="copyCompAbonos()">📋 Copiar comparación de abonos para Excel</button>
-
 <div id="chart"></div>
 <div id="tb"></div>
-
-<button class="btn alt" style="margin-top:10px;" onclick="copyTableAmortization()">📊 Copiar tabla de amortización para Excel</button>
-
 <h2>Mis simulaciones</h2>
 <section class="card">
 <label for="sn">Guardar esta simulación como</label>
 <input id="sn" maxlength="40" placeholder="Ej. Crédito del carro">
 <button class="btn alt" onclick="saveSim()">Guardar simulación</button>
-<div class="row" style="margin-top:10px;gap:8px;">
-  <button class="btn alt" style="margin-top:0;" onclick="copyJSONData()">📋 Copiar simulaciones y datos</button>
-  <button class="btn alt" style="margin-top:0;" onclick="restoreJSONData()">📥 Restaurar desde texto</button>
-</div>
-
 <div id="svl"></div>
 </section>
 </div>
@@ -163,9 +152,6 @@ svg{width:100%;height:auto;display:block}
 <p class="msg">El nuevo crédito se calcula sobre tu saldo actual. Pregunta a tu banco si cobra penalización por prepago y cuáles son los costos reales.</p>
 </section>
 <div id="rr"></div>
-
-<button class="btn alt" style="margin-top:10px;" onclick="copyCompRefinanciacion()">📋 Copiar comparación de refinanciación para Excel</button>
-
 </div>
 </main>
 <script>
@@ -289,137 +275,6 @@ out.innerHTML=h+"<p class='msg'>Estimación con cuota fija. Confirma con el banc
 $("at").addEventListener("change",tAb);
 $("sgt").addEventListener("change",function(){$("sgv").placeholder=this.value==="s"?"Ej. 0,05":"Ej. 45.000"});
 fill();rinit();
-
-function copyJSONData(){
-  var dataStr = JSON.stringify(ST, null, 2);
-  navigator.clipboard.writeText(dataStr).then(function(){
-    alert("¡Todas tus simulaciones y datos actuales han sido copiados al portapapeles!");
-  }).catch(function(err){
-    prompt("Copia manualmente tu configuración JSON:", dataStr);
-  });
-}
-
-function restoreJSONData(){
-  var input = prompt("Pega aquí el texto JSON previamente copiado para restaurar tus datos:");
-  if(!input) return;
-  try{
-    var obj = JSON.parse(input);
-    ST = Object.assign(ST, obj);
-    ST.sg = nsg(ST.sg);
-    if(Array.isArray(ST.sv)) ST.sv.forEach(function(s){ s.sg = nsg(s.sg); });
-    save();
-    fill();
-    rinit();
-    alert("¡Tus datos y simulaciones han sido restaurados con éxito!");
-  } catch(e) {
-    alert("El texto pegado no es un JSON válido. Revisa e intenta de nuevo.");
-  }
-}
-
-function copyTableAmortization(){
-  var q = pr();
-  if(!q.ok){ alert("Por favor completa los datos del crédito primero."); return; }
-  var b = sim(q.P, q.i, q.n, q.sg, [], "plazo");
-  var w = ST.ab.length ? sim(q.P, q.i, q.n, q.sg, ST.ab, ST.ef) : null;
-  var s = w && w.te ? w : b;
-  var hasAb = w && w.te;
-  
-  var tsv = ["Mes", "Cuota", "Interés", "Capital", (hasAb ? "Abono Extra" : ""), "Saldo Final"].filter(Boolean).join("	") + "
-";
-  s.rows.forEach(function(r){
-    var line = [
-      r.m,
-      Math.round(r.pay),
-      Math.round(r.it),
-      Math.round(r.cap),
-      (hasAb ? Math.round(r.ex) : null),
-      Math.round(r.bal)
-    ].filter(function(x){ return x !== null; }).join("	");
-    tsv += line + "
-";
-  });
-  
-  navigator.clipboard.writeText(tsv).then(function(){
-    alert("¡Tabla de amortización copiada al portapapeles! Lista para pegar (Ctrl+V) en Excel o Google Sheets.");
-  }).catch(function(){
-    prompt("Copia este texto para pegar en Excel:", tsv);
-  });
-}
-
-function copyCompAbonos(){
-  var q = pr();
-  if(!q.ok){ alert("Por favor completa los datos del crédito primero."); return; }
-  var b = sim(q.P, q.i, q.n, q.sg, [], "plazo");
-  var w = ST.ab.length ? sim(q.P, q.i, q.n, q.sg, ST.ab, ST.ef) : null;
-  if(!w || !w.te){ alert("Agrega al menos un abono a capital para poder copiar la comparación."); return; }
-  
-  var cuN = ST.ef === "cuota" ? w.cuEnd : b.cu0;
-  var tsv = "Métrica	Sin Abonos	Con Abonos
-";
-  tsv += "Plazo	" + fmtM(b.n) + "	" + fmtM(w.n) + "
-";
-  tsv += "Cuota (sin seguros)	" + Math.round(b.cu0) + "	" + Math.round(cuN) + "
-";
-  tsv += "Intereses Totales	" + Math.round(b.ti) + "	" + Math.round(w.ti) + "
-";
-  if(q.hs) tsv += "Seguros y Cobros	" + Math.round(b.ts) + "	" + Math.round(w.ts) + "
-";
-  tsv += "Abonos Extra	0	" + Math.round(w.te) + "
-";
-  tsv += "Total Pagado	" + Math.round(b.tp) + "	" + Math.round(w.tp) + "
-";
-  tsv += "Ahorro Total Intereses	0	" + Math.round(b.ti - w.ti) + "
-";
-  
-  navigator.clipboard.writeText(tsv).then(function(){
-    alert("¡Comparación de abonos copiada al portapapeles! Lista para pegar en Excel o Google Sheets.");
-  }).catch(function(){
-    prompt("Copia este texto para pegar en Excel:", tsv);
-  });
-}
-
-function copyCompRefinanciacion(){
-  var D = function(k){ return Number(digits($(k).value)) || 0; }, F = function(k){ return parseFloat(String($(k).value).replace(",", ".")) || 0; };
-  var P = D("rm"), r = F("rt"), n = mo("rp", "rpu"), k = parseInt($("rk").value, 10) || 0, sA = D("rs"), rn = F("nt"), nn = mo("np", "npu"), sN = D("ns");
-  if(!(P > 0 && r >= 0 && n >= 1) || !(rn >= 0) || !(nn >= 1)){ alert("Completa los datos de refinanciación para poder copiar la comparación."); return; }
-  
-  var iA = $("rtt").value === "ea" ? Math.pow(1 + r/100, 1/12) - 1 : r/100;
-  var iB = $("ntt").value === "ea" ? Math.pow(1 + rn/100, 1/12) - 1 : rn/100;
-  var o = sim(P, iA, n, {f:sA, p:0}, [], "plazo");
-  var S = D("rb") || (k > 0 ? o.rows[k-1].bal : P);
-  var a = rest(S, iA, o.cu0, sA);
-  var C = D("nc") + (F("npn") || 0)/100 * S;
-  var b = sim(S, iB, nn, {f:sN, p:0}, [], "plazo");
-  
-  var eaA = Math.pow(1 + iA, 12) - 1, eaB = Math.pow(1 + iB, 12) - 1;
-  var cA = a.cu, cB = b.rows[0].pay;
-  
-  var tsv = "Métrica	Seguir con el Actual	Refinanciar
-";
-  tsv += "Tasa E.A.	" + pc(eaA) + "	" + pc(eaB) + "
-";
-  tsv += "Cuota Mensual	" + Math.round(cA) + "	" + Math.round(cB) + "
-";
-  tsv += "Tiempo Restante	" + fmtM(a.n) + "	" + fmtM(nn) + "
-";
-  tsv += "Intereses por Pagar	" + Math.round(a.ti) + "	" + Math.round(b.ti) + "
-";
-  if(sA || sN) tsv += "Seguros por Pagar	" + Math.round(a.ts) + "	" + Math.round(b.ts) + "
-";
-  tsv += "Costos de Cambio	0	" + Math.round(C) + "
-";
-  tsv += "Total Futuro a Pagar	" + Math.round(a.tp) + "	" + Math.round(b.tp + C) + "
-";
-  tsv += "Diferencia / Ahorro Total	0	" + Math.round((a.ti + a.ts) - (b.ti + b.ts + C)) + "
-";
-  
-  navigator.clipboard.writeText(tsv).then(function(){
-    alert("¡Comparación de refinanciación copiada al portapapeles! Lista para pegar en Excel o Google Sheets.");
-  }).catch(function(){
-    prompt("Copia este texto para pegar en Excel:", tsv);
-  });
-}
-
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("service-worker.js").catch(function(){})})}
 </script>
 </body>
